@@ -16,7 +16,7 @@
     ],
     "require": {
         "doctrine/annotations": "^2.0",
-        "nikic/php-parser": "^4.15",
+        "nikic/php-parser": "^5.3",
         "php": "^8.2",
         "symfony/finder": "^7.1",
         "symfony/yaml": "^7.1"
