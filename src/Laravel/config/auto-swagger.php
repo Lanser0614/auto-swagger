@@ -50,4 +50,16 @@ return [
         'enabled' => true,
         'theme' => 'dark', // light or dark
     ],
+
+    'auth' => [
+        'bearer' => [
+            'enabled' => true
+        ],
+        'oauth2' => [
+            'enabled' => false
+        ],
+        'apiKey' => [
+            'enabled' => true
+        ],
+    ]
 ];

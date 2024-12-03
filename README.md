@@ -6,8 +6,8 @@
     #[ApiSwagger(summary: 'Get address by coordinates', tag: 'Bitrix')]
     #[ApiSwaggerRequest(request: TestRequest::class, description: 'Get address by coordinates')]
     #[ApiSwaggerResponse(status: 200, resource: BitrixResponse::class, description: 'User details')]
-    #[ApiSwaggerResponse(status: 500, description: 'Error on busines request')]
-    #[ApiSwaggerResponse(status: 422, description: 'Error on busines request')]
+    #[ApiSwaggerResponse(status: 500, description: 'Error on business request')]
+    #[ApiSwaggerResponse(status: 422, description: 'Error on validation request')]
     public function getHumanAddressFormat(
         TestRequest $request
     ): BitrixResponse
