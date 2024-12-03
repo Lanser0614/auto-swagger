@@ -3,7 +3,7 @@
 namespace AutoSwagger\Attributes;
 
 #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
-class ApiResponse
+class ApiSwaggerResponse
 {
     public function __construct(
         public readonly int $status = 200,

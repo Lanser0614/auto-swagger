@@ -1,101 +1,49 @@
-# AutoSwagger PHP
-
-AutoSwagger is a PHP package that automatically generates OpenAPI/Swagger documentation from PHP attributes, similar to NestJS/Swagger.
-
-## Installation
-
-```bash
-composer require auto-swagger/php-swagger-generator
+```php
+ /**
+     * @param int $id
+     * @return BitrixResponse
+     */
+    #[ApiSwagger(summary: 'Get address by coordinates', tag: 'Bitrix')]
+    #[ApiSwaggerRequest(request: TestRequest::class, description: 'Get address by coordinates')]
+    #[ApiSwaggerResponse(status: 200, resource: BitrixResponse::class, description: 'User details')]
+    #[ApiSwaggerResponse(status: 500, description: 'Error on busines request')]
+    #[ApiSwaggerResponse(status: 422, description: 'Error on busines request')]
+    public function getHumanAddressFormat(
+        TestRequest $request
+    ): BitrixResponse
+    {
+        $model = Model::query()->first();
+        
+        return new BitrixResponse($model);
+    }
 ```
 
-## Usage
-
-### 1. Add Attributes to Your Controllers
-
 ```php
-use AutoSwagger\Attributes\ApiOperation;
-use AutoSwagger\Attributes\ApiProperty;
+use AutoSwagger\Attributes\ApiSwaggerResource;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class UserController
+#[ApiSwaggerResource(name: 'User', properties: [
+    'id' => 'integer',
+    'name' => 'string',
+])]
+class BitrixResponse extends JsonResource
 {
-    #[ApiOperation(
-        summary: 'Get user by ID',
-        description: 'Retrieves a user by their unique identifier',
-        tags: ['Users'],
-        parameters: [
-            [
-                'name' => 'id',
-                'in' => 'path',
-                'required' => true,
-                'description' => 'User ID',
-                'type' => 'integer'
-            ]
-        ]
-    )]
-    public function getUser(int $id)
+    public function toArray($request): array
     {
-        // Implementation
-    }
-
-    #[ApiOperation(
-        summary: 'Create new user',
-        description: 'Creates a new user in the system',
-        tags: ['Users']
-    )]
-    public function createUser(
-        #[ApiProperty(description: 'User name', required: true)] string $name,
-        #[ApiProperty(description: 'User email', required: true, format: 'email')] string $email
-    ) {
-        // Implementation
+        return [
+            'name' => 'name',
+            'id' => 123
+        ];
     }
 }
 ```
 
-### 2. Generate OpenAPI Documentation
+```markdown
+composer require auto-swagger/php-swagger-generator
 
-```php
-use AutoSwagger\Generator\OpenApiGenerator;
+php artisan vendor:publish --tag=auto-swagger-config
 
-// Create a new instance of the OpenAPI generator
-$generator = new OpenApiGenerator(
-    title: 'Your API',
-    version: '1.0.0',
-    description: 'Your API description'
-);
+php artisan vendor:publish --tag=auto-swagger-views
 
-// Add controllers to be processed
-$generator->addController(UserController::class);
-
-// Generate the OpenAPI specification
-$specification = $generator->generate();
-
-// Output the specification as JSON
-file_put_contents('openapi.json', json_encode($specification, JSON_PRETTY_PRINT));
-```
-
-## Available Attributes
-
-### ApiOperation
-Used to document controller methods:
-- `summary`: A brief summary of the operation
-- `description`: A detailed description of the operation
-- `tags`: Array of tags for grouping operations
-- `parameters`: Array of operation parameters
-- `responses`: Array of possible responses
-- `deprecated`: Boolean indicating if the operation is deprecated
-
-### ApiProperty
-Used to document model properties and method parameters:
-- `description`: Property description
-- `type`: Property type
-- `format`: Property format (e.g., 'email', 'date-time')
-- `required`: Whether the property is required
-- `example`: Example value
-- `enum`: Array of possible values
-
-## Example
-Check the `example` directory for a complete working example.
-
-## License
-MIT
-# auto-swagger
+php artisan vendor:publish --tag=auto-swagger-assets
+```# auto-swagger

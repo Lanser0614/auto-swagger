@@ -3,81 +3,145 @@
 namespace AutoSwagger\Laravel\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
 use AutoSwagger\Generator\OpenApiGenerator;
-use Symfony\Component\Finder\Finder;
+use Illuminate\Support\Facades\File;
+use Symfony\Component\Yaml\Yaml;
 
 class GenerateSwaggerCommand extends Command
 {
-    protected $signature = 'swagger:generate 
-                          {--format=json : Output format (json or yaml)}';
+    protected $signature = 'swagger:generate
+                          {--format=json : Output format (json or yaml)}
+                          {--output= : Output file path}
+                          {--title= : API title}
+                          {--description= : API description}
+                          {--api-version= : API version}
+                          {--base-url= : Base URL for API server}
+                          {--bearer : Enable Bearer token authentication}
+                          {--oauth2 : Enable OAuth2 authentication}
+                          {--api-key : Enable API key authentication}
+                          {--config= : Path to configuration file}';
 
-    protected $description = 'Generate Swagger/OpenAPI documentation';
+    protected $description = 'Generate OpenAPI documentation from your Laravel application';
 
-    public function handle(OpenApiGenerator $generator): int
+    public function handle(): int
     {
-        $this->info('Generating Swagger documentation...');
+        $this->info('Generating OpenAPI documentation...');
 
-        // Scan controllers
-        $controllers = $this->scanControllers();
-        
-        foreach ($controllers as $controller) {
-            $generator->addController($controller);
+        try {
+            // Get configuration
+            $config = $this->getConfiguration();
+
+
+            // Create generator
+            $generator = new OpenApiGenerator($config);
+
+            // Generate specification
+            $spec = $generator->generate();
+
+            // Convert to desired format
+            $output = $this->formatOutput($spec);
+
+            // Save or display output
+            $this->handleOutput($output);
+
+            $this->info('OpenAPI documentation generated successfully!');
+            return 0;
+        } catch (\Throwable $e) {
+            $this->error('Error generating documentation: ' . $e->getMessage());
+            $this->error($e->getTraceAsString());
+            return 1;
         }
-
-        // Generate specification
-        $specification = $generator->generate();
-
-        // Ensure output directory exists
-        $outputPath = config('auto-swagger.output.json');
-        $directory = dirname($outputPath);
-        if (!File::exists($directory)) {
-            File::makeDirectory($directory, 0755, true);
-        }
-
-        // Save specification
-        if ($this->option('format') === 'yaml') {
-            $outputPath = config('auto-swagger.output.yaml');
-            File::put($outputPath, yaml_emit($specification));
-        } else {
-            File::put($outputPath, json_encode($specification, JSON_PRETTY_PRINT));
-        }
-
-        $this->info('Documentation generated successfully!');
-        return Command::SUCCESS;
     }
 
-    private function scanControllers(): array
+    private function getConfiguration(): array
     {
-        $controllers = [];
-        $paths = config('auto-swagger.controllers', []);
+        // Start with default configuration
+        $config = [
+            'title' => config('auto-swagger.title'),
+            'description' => config('auto-swagger.description'),
+            'version' => config('auto-swagger.version'),
+            'servers' => [],
+            'security' => config('auto-swagger.auth'),
+        ];
 
-        foreach ($paths as $path) {
-            if (!File::exists($path)) {
-                continue;
-            }
 
-            $finder = new Finder();
-            $finder->files()->in($path)->name('*Controller.php');
+        // Configure base URL
+        $baseUrl = config('app.url');
+        $config['servers'][] = [
+            'url' => rtrim($baseUrl, '/') . '/api',
+            'description' => 'API Server'
+        ];
 
-            foreach ($finder as $file) {
-                $className = $this->getClassNameFromFile($file->getRealPath());
-                if ($className) {
-                    $controllers[] = $className;
-                }
-            }
+        // Configure security
+        if ($config['security']['bearer']['enabled']) {
+            $config['security']['bearer']['enabled'] = true;
         }
 
-        return $controllers;
+        if ($config['security']['oauth2']['enabled']) {
+            $config['security']['oauth2'] = [
+                'enabled' => true,
+                'flows' => [
+                    'password' => [
+                        'tokenUrl' => '/oauth/token',
+                        'scopes' => []
+                    ]
+                ],
+                'scopes' => []
+            ];
+        }
+
+        if ($config['security']['apiKey']['enabled']) {
+            $config['security']['apiKey'] = [
+                'enabled' => true,
+                'in' => 'header',
+                'name' => 'X-API-Key'
+            ];
+        }
+
+        return $config;
     }
 
-    private function getClassNameFromFile(string $path): ?string
+
+    private function formatOutput(array $spec): string
     {
-        $content = File::get($path);
-        if (preg_match('/namespace\s+(.+?);/s', $content, $matches) &&
-            preg_match('/class\s+(\w+)/', $content, $classMatches)) {
-            return $matches[1] . '\\' . $classMatches[1];
+        $format = strtolower($this->option('format'));
+
+        return match ($format) {
+            'yaml', 'yml' => Yaml::dump($spec, 10, 2),
+            'json' => json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            default => throw new \InvalidArgumentException("Unsupported format: {$format}")
+        };
+    }
+
+    private function handleOutput(string $output): void
+    {
+        $this->line($output);
+
+        $format = strtolower($this->option('format') ?? 'json');
+
+        $directory = match ($format) {
+            'yaml', 'yml' => public_path('swagger/openapi.yaml'),
+            'json' => public_path('swagger/openapi.json'),
+            default => throw new \InvalidArgumentException("Unsupported format: {$format}")
+        };
+
+
+        file_put_contents($directory, $output);
+        $this->info("Documentation saved to: {$directory}");
+    }
+
+    private function createExampleConfig(): void
+    {
+        $stub = File::get(__DIR__ . '/stubs/swagger-config.stub');
+        $configPath = config_path('swagger.php');
+
+        if (File::exists($configPath)) {
+            if (!$this->confirm('Configuration file already exists. Do you want to overwrite it?')) {
+                return;
+            }
         }
-        return null;
+
+        File::put($configPath, $stub);
+        $this->info('Example configuration file created at: ' . $configPath);
     }
 }

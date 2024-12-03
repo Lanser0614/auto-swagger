@@ -2,254 +2,261 @@
 
 namespace AutoSwagger\Generator;
 
-use ReflectionClass;
-use ReflectionMethod;
-use ReflectionAttribute;
-use ReflectionParameter;
-use AutoSwagger\Attributes\ApiOperation;
-use AutoSwagger\Attributes\ApiProperty;
-use AutoSwagger\Attributes\ApiRequest;
-use AutoSwagger\Attributes\ApiResponse;
+use AutoSwagger\Analyzer\RouteAnalyzer;
+use AutoSwagger\Analyzer\SchemaGenerator;
+use Illuminate\Support\Str;
 
 class OpenApiGenerator
 {
-    private array $paths = [];
-    private array $schemas = [];
-    private array $controllers = [];
+    private RouteAnalyzer $routeAnalyzer;
     private SchemaGenerator $schemaGenerator;
+    private array $config;
+    private array $schemas = [];
 
-    public function __construct(
-        private readonly string $title = 'API Documentation',
-        private readonly string $version = '1.0.0',
-        private readonly string $description = ''
-    ) {
-        $this->schemaGenerator = new SchemaGenerator();
-    }
-
-    public function addController(string $controllerClass): self
+    public function __construct(array $config = [])
     {
-        $this->controllers[] = $controllerClass;
-        return $this;
+        $this->routeAnalyzer = new RouteAnalyzer();
+        $this->schemaGenerator = new SchemaGenerator();
+        $this->config = array_merge($this->getDefaultConfig(), $config);
     }
 
     public function generate(): array
     {
-        foreach ($this->controllers as $controller) {
-            $this->processController($controller);
+        $routes = $this->routeAnalyzer->analyzeRoutes();
+
+        $spec = [
+            'openapi' => '3.0.0',
+            'info' => $this->generateInfo(),
+            'servers' => $this->generateServers(),
+            'paths' => $this->generatePaths($routes),
+            'components' => [
+                'schemas' => $this->schemas,
+                'securitySchemes' => $this->generateSecuritySchemes(),
+            ],
+            'tags' => $this->generateTags($routes),
+        ];
+
+
+        // Remove empty components if no schemas or security schemes
+        if (empty($spec['components']['schemas']) && empty($spec['components']['securitySchemes'])) {
+            unset($spec['components']);
         }
 
+        return $spec;
+    }
+
+    private function generateInfo(): array
+    {
         return [
-            'openapi' => '3.0.0',
-            'info' => [
-                'title' => $this->title,
-                'description' => $this->description,
-                'version' => $this->version,
-            ],
-            'paths' => $this->paths,
-            'components' => [
-                'schemas' => $this->schemas
-            ]
+            'title' => $this->config['title'],
+            'description' => $this->config['description'],
+            'version' => $this->config['version'],
+            'contact' => $this->config['contact'],
+            'license' => $this->config['license'],
         ];
     }
 
-    private function processController(string $controllerClass): void
+    private function generateServers(): array
     {
-        $reflection = new ReflectionClass($controllerClass);
-        
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $this->processMethod($method);
-        }
+        return array_map(function ($server) {
+            return [
+                'url' => $server['url'],
+                'description' => $server['description'] ?? null,
+            ];
+        }, $this->config['servers']);
     }
 
-    private function processMethod(ReflectionMethod $method): void
+    private function generatePaths(array $routes): array
     {
-        $attributes = $method->getAttributes(ApiOperation::class);
-        
-        if (empty($attributes)) {
-            return;
-        }
+        $paths = [];
 
-        foreach ($attributes as $attribute) {
-            /** @var ApiOperation $operation */
-            $operation = $attribute->newInstance();
-            
-            $path = $this->getPathFromMethod($method);
-            $httpMethod = $this->getHttpMethodFromMethod($method);
-            
-            $operationArray = [
-                'summary' => $operation->summary,
-                'description' => $operation->description,
-                'tags' => $operation->tags,
-                'operationId' => $operation->operationId ?? $method->getName(),
-                'parameters' => $this->processParameters($method),
-                'responses' => $this->processResponses($method),
-                'deprecated' => $operation->deprecated,
+        foreach ($routes as $route) {
+            $path = $route['path'];
+            $method = strtolower($route['method']);
+
+            if (!isset($paths[$path])) {
+                $paths[$path] = [];
+            }
+
+            $operation = [
+                'tags' => array_map(fn($tag) => $tag['name'], $route['tags']),
+                'summary' => $route['summary'],
+                'description' => $route['description'],
+                'operationId' => $route['operationId'],
+                'parameters' => $this->formatParameters($route['parameters']),
+                'responses' => $this->formatResponses($route['responses']),
             ];
 
-            // Process request body
-            $requestBody = $this->processRequestBody($method);
-            if (!empty($requestBody)) {
-                $operationArray['requestBody'] = $requestBody;
+            // Add request body if present
+            if (isset($route['requestBody'])) {
+                $operation['requestBody'] = $route['requestBody'];
             }
 
-            $this->paths[$path][$httpMethod] = $operationArray;
+            // Add security if route has auth middleware
+            if ($this->hasAuthMiddleware($route['middleware'])) {
+                $operation['security'] = $this->getSecurityRequirements($route['middleware']);
+            }
+
+            // Add deprecated flag if route is marked as deprecated
+            if (isset($route['deprecated']) && $route['deprecated']) {
+                $operation['deprecated'] = true;
+            }
+
+            $paths[$path][$method] = $operation;
         }
+
+        ksort($paths);
+        return $paths;
     }
 
-    private function processRequestBody(ReflectionMethod $method): array
+    private function formatParameters(array $parameters): array
     {
-        $requestAttributes = $method->getAttributes(ApiRequest::class);
-        if (empty($requestAttributes)) {
-            return [];
+        // Group parameters by 'in' type
+        $grouped = [];
+        foreach ($parameters as $param) {
+            $key = $param['name'] . ':' . $param['in'];
+            $grouped[$key] = $param;
         }
 
-        /** @var ApiRequest $requestAttr */
-        $requestAttr = $requestAttributes[0]->newInstance();
-        
-        if ($requestAttr->request) {
-            $schema = $this->schemaGenerator->generateFromFormRequest($requestAttr->request);
-            
-            if (!empty($schema)) {
-                $schemaName = class_basename($requestAttr->request);
-                $this->schemas[$schemaName] = $schema;
+        // Sort parameters: path first, then query
+        return array_values($grouped);
+    }
 
-                return [
-                    'required' => $requestAttr->required,
-                    'description' => $requestAttr->description,
-                    'content' => [
-                        $requestAttr->mediaType => [
-                            'schema' => [
-                                '$ref' => '#/components/schemas/' . $schemaName
-                            ]
-                        ]
-                    ]
-                ];
+    private function formatResponses(array $responses): array
+    {
+        $formatted = [];
+        foreach ($responses as $code => $response) {
+            $formatted[$code] = [
+                'description' => $response['description']
+            ];
+
+            if (isset($response['content'])) {
+                $formatted[$code]['content'] = $response['content'];
             }
         }
-
-        return [];
+        return $formatted;
     }
 
-    private function processResponses(ReflectionMethod $method): array
+    private function generateSecuritySchemes(): array
     {
-        $responses = [];
-        $responseAttributes = $method->getAttributes(ApiResponse::class);
+        $schemes = [];
 
-        foreach ($responseAttributes as $attribute) {
-            /** @var ApiResponse $response */
-            $response = $attribute->newInstance();
-            
-            if ($response->resource) {
-                $schema = $this->schemaGenerator->generateFromResource(
-                    $response->resource,
-                    $response->isCollection
-                );
-                
-                if (!empty($schema)) {
-                    $schemaName = class_basename($response->resource);
-                    $this->schemas[$schemaName] = $schema;
+        // Add Bearer token auth if configured
+        if ($this->config['security']['bearer']['enabled']) {
+            $schemes['bearerAuth'] = [
+                'type' => 'http',
+                'scheme' => 'bearer',
+                'bearerFormat' => 'JWT'
+            ];
+        }
 
-                    $responses[$response->status] = [
-                        'description' => $response->description ?? 'Successful response',
-                        'content' => [
-                            $response->mediaType => [
-                                'schema' => [
-                                    '$ref' => '#/components/schemas/' . $schemaName
-                                ]
-                            ]
-                        ]
-                    ];
-                    continue;
+        // Add OAuth2 if configured
+        if ($this->config['security']['oauth2']['enabled']) {
+            $schemes['oauth2'] = [
+                'type' => 'oauth2',
+                'flows' => $this->config['security']['oauth2']['flows']
+            ];
+        }
+
+        // Add API key if configured
+        if ($this->config['security']['apiKey']['enabled']) {
+            $schemes['apiKey'] = [
+                'type' => 'apiKey',
+                'in' => $this->config['security']['apiKey']['in'],
+                'name' => $this->config['security']['apiKey']['name']
+            ];
+        }
+
+        return $schemes;
+    }
+
+    private function generateTags(array $routes): array
+    {
+        $tags = [];
+        $tagNames = [];
+
+        foreach ($routes as $route) {
+            foreach ($route['tags'] as $tag) {
+                if (!in_array($tag['name'], $tagNames)) {
+                    $tags[] = $tag;
+                    $tagNames[] = $tag['name'];
                 }
             }
-
-            $responses[$response->status] = [
-                'description' => $response->description ?? 'Successful response'
-            ];
         }
 
-        if (empty($responses)) {
-            $responses['200'] = [
-                'description' => 'Successful operation'
-            ];
-        }
+        // Sort tags by name
+        usort($tags, fn($a, $b) => strcmp($a['name'], $b['name']));
 
-        return $responses;
+        return $tags;
     }
 
-    private function getPathFromMethod(ReflectionMethod $method): string
+    private function hasAuthMiddleware(array $middleware): bool
     {
-        // This is a simple implementation. You might want to add your own logic
-        // to extract the path from method/class attributes or naming conventions
-        $className = $method->getDeclaringClass()->getShortName();
-        $basePath = strtolower(str_replace('Controller', '', $className));
-        return '/' . $basePath . '/' . $method->getName();
+        $authMiddleware = ['auth', 'auth:api', 'auth:sanctum'];
+        return !empty(array_intersect($authMiddleware, $middleware));
     }
 
-    private function getHttpMethodFromMethod(ReflectionMethod $method): string
+    private function getSecurityRequirements(array $middleware): array
     {
-        // This is a simple implementation. You might want to add your own logic
-        // to extract the HTTP method from method attributes or naming conventions
-        $methodName = strtolower($method->getName());
-        $httpMethods = ['get', 'post', 'put', 'delete', 'patch'];
-        
-        foreach ($httpMethods as $httpMethod) {
-            if (str_starts_with($methodName, $httpMethod)) {
-                return $httpMethod;
+        $security = [];
+
+        if ($this->hasAuthMiddleware($middleware)) {
+            if ($this->config['security']['bearer']['enabled']) {
+                $security[] = ['bearerAuth' => []];
             }
-        }
-        
-        return 'get';
-    }
-
-    private function processParameters(ReflectionMethod $method): array
-    {
-        $parameters = [];
-        
-        foreach ($method->getParameters() as $param) {
-            $parameter = $this->processParameter($param);
-            if ($parameter) {
-                $parameters[] = $parameter;
+            if ($this->config['security']['oauth2']['enabled']) {
+                $security[] = ['oauth2' => $this->config['security']['oauth2']['scopes']];
             }
         }
 
-        return $parameters;
-    }
-
-    private function processParameter(ReflectionParameter $param): ?array
-    {
-        $attributes = $param->getAttributes(ApiProperty::class);
-        if (empty($attributes)) {
-            return null;
+        if (in_array('api_key', $middleware) && $this->config['security']['apiKey']['enabled']) {
+            $security[] = ['apiKey' => []];
         }
 
-        /** @var ApiProperty $property */
-        $property = $attributes[0]->newInstance();
+        return $security;
+    }
 
+    private function getDefaultConfig(): array
+    {
         return [
-            'name' => $param->getName(),
-            'in' => 'query',
-            'description' => $property->description,
-            'required' => $property->required,
-            'schema' => [
-                'type' => $property->type ?? $this->getParameterType($param)
+            'title' => 'API Documentation',
+            'description' => 'API Documentation generated by AutoSwagger',
+            'version' => '1.0.0',
+            'contact' => [
+                'name' => '',
+                'url' => '',
+                'email' => ''
+            ],
+            'license' => [
+                'name' => '',
+                'url' => ''
+            ],
+            'servers' => [
+                [
+                    'url' => config('app.url') . '/api',
+                    'description' => 'API Server'
+                ]
+            ],
+            'security' => [
+                'bearer' => [
+                    'enabled' => true
+                ],
+                'oauth2' => [
+                    'enabled' => false,
+                    'flows' => [
+                        'password' => [
+                            'tokenUrl' => '/oauth/token',
+                            'scopes' => []
+                        ]
+                    ],
+                    'scopes' => []
+                ],
+                'apiKey' => [
+                    'enabled' => false,
+                    'in' => 'header',
+                    'name' => 'X-API-Key'
+                ]
             ]
         ];
-    }
-
-    private function getParameterType(ReflectionParameter $param): string
-    {
-        $type = $param->getType();
-        if (!$type) {
-            return 'string';
-        }
-
-        return match ($type->getName()) {
-            'int', 'integer' => 'integer',
-            'float', 'double' => 'number',
-            'bool', 'boolean' => 'boolean',
-            'array' => 'array',
-            default => 'string'
-        };
     }
 }

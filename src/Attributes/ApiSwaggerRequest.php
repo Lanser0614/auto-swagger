@@ -3,7 +3,7 @@
 namespace AutoSwagger\Attributes;
 
 #[\Attribute(\Attribute::TARGET_PARAMETER | \Attribute::TARGET_METHOD)]
-class ApiRequest
+class ApiSwaggerRequest
 {
     public function __construct(
         public readonly ?string $request = null,

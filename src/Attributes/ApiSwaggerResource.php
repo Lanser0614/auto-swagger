@@ -3,7 +3,7 @@
 namespace AutoSwagger\Attributes;
 
 #[\Attribute(\Attribute::TARGET_CLASS)]
-class ApiResource
+class ApiSwaggerResource
 {
     public function __construct(
         public readonly string $name,
