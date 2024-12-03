@@ -68,7 +68,7 @@ class GenerateSwaggerCommand extends Command
         // Configure base URL
         $baseUrl = config('app.url');
         $config['servers'][] = [
-            'url' => rtrim($baseUrl, '/') . '/api',
+            'url' => rtrim($baseUrl, '/'),
             'description' => 'API Server'
         ];
 

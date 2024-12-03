@@ -4,8 +4,8 @@
      * @return BitrixResponse
      */
     #[ApiSwagger(summary: 'Get address by coordinates', tag: 'Bitrix')]
-    #[ApiSwaggerRequest(request: TestRequest::class, description: 'Get address by coordinates')]
-    #[ApiSwaggerResponse(status: 200, resource: BitrixResponse::class, description: 'User details')]
+    #[ApiSwaggerRequest(request: ApiRequest::class, description: 'Get address by coordinates')]
+    #[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
     #[ApiSwaggerResponse(status: 500, description: 'Error on business request')]
     #[ApiSwaggerResponse(status: 422, description: 'Error on validation request')]
     public function getHumanAddressFormat(
@@ -26,7 +26,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
     'id' => 'integer',
     'name' => 'string',
 ])]
-class BitrixResponse extends JsonResource
+class ApiResource extends JsonResource
 {
     public function toArray($request): array
     {
@@ -124,3 +124,21 @@ return [
 ];
 
 ```
+
+### generate api docs
+
+```markdown
+php artisan swagger:generate
+```
+
+### generate api docs on yaml
+```markdown
+php artisan swagger:generate --format=yaml
+```
+
+### Link for documentation
+
+```markdown
+http://domain/api/documentation
+```
+
