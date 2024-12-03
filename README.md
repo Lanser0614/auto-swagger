@@ -40,10 +40,15 @@ class BitrixResponse extends JsonResource
 
 ```markdown
 composer require auto-swagger/php-swagger-generator
-
+```
+```markdown
 php artisan vendor:publish --tag=auto-swagger-config
+```
 
+```markdown
 php artisan vendor:publish --tag=auto-swagger-views
+```
 
+```markdown
 php artisan vendor:publish --tag=auto-swagger-assets
-```# auto-swagger
+```
