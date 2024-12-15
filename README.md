@@ -18,6 +18,30 @@
     }
 ```
 
+### ApiSwaggerResponse response property can be
+
+#### Model
+```php
+    #[ApiSwaggerResponse(status: 200, resource: User::class, description: 'User details')]
+```
+
+
+#### Resource
+```php
+    #[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
+```
+
+
+#### Array
+```php
+    #[ApiSwaggerResponse(status: 200, resource: [
+        'id' => 'integer',
+        'name' => 'string',
+        "email" => "string",
+    ], description: 'User details')]
+```
+
+
 ```php
 use AutoSwagger\Attributes\ApiSwaggerResource;
 use Illuminate\Http\Resources\Json\JsonResource;
