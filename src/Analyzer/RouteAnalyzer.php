@@ -7,11 +7,12 @@ use AutoSwagger\Attributes\ApiProperty;
 use AutoSwagger\Attributes\ApiSwaggerResponse;
 use AutoSwagger\Attributes\ApiSwaggerResource;
 use AutoSwagger\Attributes\ApiResponseException;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
 use ReflectionMethod;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Routing\Route as LaravelRoute;
-use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 class RouteAnalyzer
 {
@@ -366,14 +367,17 @@ class RouteAnalyzer
             ];
 
             if ($response->resource) {
-                $schema = $this->generateResourceSchema($response->resource, $response->isCollection);
+                if (is_array($response->resource)) {
+                    $schema = $this->generateResourceSchemaFromArray($response->resource);
+                } else {
+                    $schema = $this->generateResourceSchema($response->resource, $response->isCollection);
+                }
                 if (!empty($schema)) {
                     $responseData['content'][$response->mediaType] = [
                         'schema' => $schema
                     ];
                 }
             }
-
 
 
             $responses[$response->status] = $responseData;
@@ -426,42 +430,60 @@ class RouteAnalyzer
         return $responses;
     }
 
-    private function generateResourceSchema(string $resourceClass, bool $isCollection): array
+
+    public function generateResourceSchemaFromArray(array $properties): array
     {
-        if (!class_exists($resourceClass)) {
-            return [];
-        }
-
-        $reflection = new ReflectionClass($resourceClass);
-        $resourceAttribute = $reflection->getAttributes(ApiSwaggerResource::class)[0] ?? null;
-
-        if (!$resourceAttribute) {
-            return [];
-        }
-
-        $resource = $resourceAttribute->newInstance();
         $schema = [
             'type' => 'object',
             'properties' => []
         ];
 
         // Add properties from ApiSwaggerResource attribute
-        foreach ($resource->properties as $name => $property) {
-            $schema['properties'][$name] = is_array($property) ? $property : ['type' => $property];
+        foreach ($properties as $name => $property) {
+            $schema['properties'][$name] = is_array($property) ? $property : ['type' => $this->determinePropertyType($property)];
         }
 
+        return $schema;
+    }
 
+    private function generateResourceSchema(string $resourceClass, bool $isCollection): array
+    {
+        if (!class_exists($resourceClass)) {
+            return [];
+        }
 
-        // Add properties from ApiProperty attributes on resource class properties
-        foreach ($reflection->getProperties() as $property) {
-            $propertyAttribute = $property->getAttributes(ApiProperty::class)[0] ?? null;
-            if ($propertyAttribute) {
-                $apiProperty = $propertyAttribute->newInstance();
-                $schema['properties'][$property->getName()] = [
-                    'type' => $apiProperty->type,
-                    'description' => $apiProperty->description
-                ];
+        $properties = [];
+        $reflection = new ReflectionClass($resourceClass);
+        if ($reflection->isSubclassOf(Model::class)) {
+            $propertys = Schema::getColumns($reflection->newInstance()->getTable());
+            foreach ($propertys as $key => $property) {
+                $properties[$property['name']] = $this->mapFromDatabaseColumn($property['type_name']);
             }
+        }
+
+        if (count($reflection->getAttributes(ApiSwaggerResource::class)) === 1) {
+            $resourceAttribute = $reflection->getAttributes(ApiSwaggerResource::class)[0] ?? null;
+
+            if (!$resourceAttribute) {
+                return [];
+            }
+
+            $resource = $resourceAttribute->newInstance();
+
+            foreach ($resource->properties as $name => $property) {
+                $properties[$name] = $this->determinePropertyType($property);
+            }
+
+        }
+
+        $schema = [
+            'type' => 'object',
+            'properties' => []
+        ];
+
+        // Add properties from ApiSwaggerResource attribute
+        foreach ($properties as $name => $property) {
+            $schema['properties'][$name] = is_array($property) ? $property : ['type' => $property];
         }
 
         if ($isCollection) {
@@ -472,6 +494,46 @@ class RouteAnalyzer
         }
 
         return $schema;
+    }
+
+
+    private function mapFromDatabaseColumn(string $columnType): string
+    {
+        $map = [
+            'varchar' => 'string',
+            'text' => 'string',
+            'char' => 'string',
+            'string' => 'string',
+            'json' => 'object',
+            'integer' => 'integer',
+            'int' => 'integer',
+            'smallint' => 'integer',
+            'bigint' => 'integer',
+            'tinyint' => 'integer',
+            'float' => 'number',
+            'double' => 'number',
+            'decimal' => 'number',
+            'boolean' => 'boolean',
+            'date' => 'string',
+            'datetime' => 'string',
+            'timestamp' => 'string',
+            'time' => 'string',
+            'binary' => 'string',
+            'blob' => 'string',
+        ];
+
+        return $map[$columnType] ?? 'string';
+    }
+
+    private function determinePropertyType(string $propertyName): string
+    {
+        return match ($propertyName) {
+            'int', 'integer' => 'integer',
+            'float', 'double' => 'number',
+            'boolean' => 'boolean',
+            'array', 'json' => 'array',
+            default => 'string',
+        };
     }
 
     private function hasFormRequest(ReflectionMethod $method): bool
