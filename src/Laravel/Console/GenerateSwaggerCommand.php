@@ -120,8 +120,8 @@ class GenerateSwaggerCommand extends Command
         $format = strtolower($this->option('format') ?? 'json');
 
         $directory = match ($format) {
-            'yaml', 'yml' => public_path('swagger/openapi.yaml'),
-            'json' => public_path('swagger/openapi.json'),
+            'yaml', 'yml' => public_path('/swagger/openapi.yaml'),
+            'json' => public_path('/swagger/openapi.json'),
             default => throw new \InvalidArgumentException("Unsupported format: {$format}")
         };
 

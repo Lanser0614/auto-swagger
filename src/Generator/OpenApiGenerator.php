@@ -36,7 +36,6 @@ class OpenApiGenerator
             'tags' => $this->generateTags($routes),
         ];
 
-
         // Remove empty components if no schemas or security schemes
         if (empty($spec['components']['schemas']) && empty($spec['components']['securitySchemes'])) {
             unset($spec['components']);
@@ -105,7 +104,7 @@ class OpenApiGenerator
             $paths[$path][$method] = $operation;
         }
 
-        ksort($paths);
+//        ksort($paths);
         return $paths;
     }
 

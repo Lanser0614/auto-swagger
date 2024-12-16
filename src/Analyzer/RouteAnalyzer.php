@@ -89,7 +89,6 @@ class RouteAnalyzer
                 'middleware' => $route->middleware()
             ];
 
-//            dd($routeInfo);
             // Add request body if applicable
             $requestBody = $this->getRequestBody($methodReflection, $route);
             if (!empty($requestBody)) {
@@ -117,6 +116,7 @@ class RouteAnalyzer
             }
         }
 
+
         if (count($tags) > 0) {
             return $tags;
         }
@@ -136,7 +136,6 @@ class RouteAnalyzer
             'name' => $controllerName,
             'description' => "Endpoints for {$controllerName}"
         ];
-
         return $tags;
     }
 
@@ -257,6 +256,7 @@ class RouteAnalyzer
                 continue;
             }
 
+
             $parameters[] = [
                 'name' => $param->getName(),
                 'in' => 'query',
@@ -278,6 +278,7 @@ class RouteAnalyzer
             return false;
         }
 
+
         // Skip request type parameters
         $type = $param->getType();
         if ($type) {
@@ -287,6 +288,7 @@ class RouteAnalyzer
                 return false;
             }
         }
+
 
         return true;
     }
@@ -346,6 +348,7 @@ class RouteAnalyzer
 
         // Generate summary from method name
         $name = $method->getName();
+
         return ucfirst(trim(preg_replace('/[A-Z]/', ' $0', $name)));
     }
 
@@ -355,12 +358,14 @@ class RouteAnalyzer
 
         // Get responses from ApiSwaggerResponse attributes
         $responseAttributes = $method->getAttributes();
+
         foreach ($responseAttributes as $attribute) {
             if ($attribute->getName() !== ApiSwaggerResponse::class) {
                 continue;
             }
 
             $response = $attribute->newInstance();
+
 
             $responseData = [
                 'description' => $response->description ?? 'Successful operation'
@@ -370,39 +375,79 @@ class RouteAnalyzer
                 if (is_array($response->resource)) {
                     $schema = $this->generateResourceSchemaFromArray($response->resource);
                 } else {
-                    $schema = $this->generateResourceSchema($response->resource, $response->isCollection);
+                    $schema = $this->generateResourceSchema($response->resource);
                 }
-                if (!empty($schema)) {
-                    $responseData['content'][$response->mediaType] = [
-                        'schema' => $schema
-                    ];
-                }
+
             }
 
 
+            if (!empty($schema)) {
+                if ($response->isPagination) {
+                    $schema = [
+                        "type" => "object",
+                        "properties" => [
+                            "pagination" => [
+                                "type" => "object",
+                                "properties" => [
+                                    "total" => [
+                                        "type" => "integer",
+                                        "example" => 1
+                                    ],
+                                    "count" => [
+                                        "type" => "integer",
+                                        "example" => 1
+                                    ],
+                                    "per_page" => [
+                                        "type" => "integer",
+                                        "example" => 1
+                                    ],
+                                    "current_page" => [
+                                        "type" => "integer",
+                                        "example" => 1
+                                    ],
+                                    "total_pages" => [
+                                        "type" => "integer",
+                                        "example" => 1
+                                    ],
+                                ]
+                            ],
+                            "data" => [
+                                "type" => "array",
+                                "items" => $schema
+                            ]
+                        ]
+                    ];
+                }
+
+                $responseData['content'][$response->mediaType] = [
+                    'schema' => $schema
+                ];
+            }
+
             $responses[$response->status] = $responseData;
+            $response = null;
         }
 
         // If no responses defined via attributes, check PHPDoc
-        if (empty($responses)) {
-            $docComment = $method->getDocComment();
-            if ($docComment) {
-                preg_match_all('/@response\s+(\d+)\s+(.+)\n/i', $docComment, $matches, PREG_SET_ORDER);
-                foreach ($matches as $match) {
-                    $responses[$match[1]] = [
-                        'description' => trim($match[2])
-                    ];
-                }
-            }
-        }
+//        if (empty($responses)) {
+//            $docComment = $method->getDocComment();
+//            if ($docComment) {
+//                preg_match_all('/@response\s+(\d+)\s+(.+)\n/i', $docComment, $matches, PREG_SET_ORDER);
+//                foreach ($matches as $match) {
+//                    $responses[$match[1]] = [
+//                        'description' => trim($match[2])
+//                    ];
+//                }
+//            }
+//        }
 
 
         // Add default responses if none specified
-        if (empty($responses)) {
-            $responses[200] = [
-                'description' => 'Successful operation'
-            ];
-        }
+//        if (empty($responses)) {
+//            $responses[200] = [
+//                'description' => 'Successful operation'
+//            ];
+//        }
         // Add common error responses
         if (!isset($responses[422]) && $this->hasFormRequest($method)) {
             $responses[422] = [
@@ -446,7 +491,7 @@ class RouteAnalyzer
         return $schema;
     }
 
-    private function generateResourceSchema(string $resourceClass, bool $isCollection): array
+    private function generateResourceSchema(string $resourceClass): array
     {
         if (!class_exists($resourceClass)) {
             return [];
@@ -473,7 +518,6 @@ class RouteAnalyzer
             foreach ($resource->properties as $name => $property) {
                 $properties[$name] = $this->determinePropertyType($property);
             }
-
         }
 
         $schema = [
@@ -484,13 +528,6 @@ class RouteAnalyzer
         // Add properties from ApiSwaggerResource attribute
         foreach ($properties as $name => $property) {
             $schema['properties'][$name] = is_array($property) ? $property : ['type' => $property];
-        }
-
-        if ($isCollection) {
-            return [
-                'type' => 'array',
-                'items' => $schema
-            ];
         }
 
         return $schema;

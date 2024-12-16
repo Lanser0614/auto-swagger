@@ -1,3 +1,6 @@
+# Laravel swagger generator
+
+
 ```php
  /**
      * @param int $id
