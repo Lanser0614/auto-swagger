@@ -37,9 +37,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'output' => [
-        'json' => public_path('swagger/openapi.json'),
-        'yaml' => public_path('swagger/openapi.yaml'),
+        'json' => 'openapi.json',
+        'yaml' => 'openapi.yaml',
     ],
+
+    'directory' => 'swagger',
 
     /*
     |--------------------------------------------------------------------------

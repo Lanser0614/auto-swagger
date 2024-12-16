@@ -5,6 +5,7 @@ namespace AutoSwagger\Laravel\Console;
 use Illuminate\Console\Command;
 use AutoSwagger\Generator\OpenApiGenerator;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Yaml\Yaml;
 
 class GenerateSwaggerCommand extends Command
@@ -119,14 +120,17 @@ class GenerateSwaggerCommand extends Command
 
         $format = strtolower($this->option('format') ?? 'json');
 
-        $directory = match ($format) {
-            'yaml', 'yml' => public_path('/swagger/openapi.yaml'),
-            'json' => public_path('/swagger/openapi.json'),
+        $fileName = match ($format) {
+            'yaml', 'yml' => config('auto-swagger.output.yaml'),
+            'json' => config('auto-swagger.output.json'),
             default => throw new \InvalidArgumentException("Unsupported format: {$format}")
         };
 
+        $directory = config('auto-swagger.directory');
 
-        file_put_contents($directory, $output);
+        File::makeDirectory(public_path($directory), 0777, true, true);
+        File::put(public_path($directory . '/' . $fileName), $output);
+
         $this->info("Documentation saved to: {$directory}");
     }
 
