@@ -23,7 +23,9 @@ class SwaggerController extends Controller
 
     public function json(): JsonResponse
     {
-        $path = config('auto-swagger.output.json');
+        $directory = config('auto-swagger.directory');
+        $fileName = config('auto-swagger.output.json');
+        $path = $directory . '/' . $fileName;
         if (!File::exists($path)) {
             abort(404, 'Swagger documentation not generated. Run php artisan swagger:generate');
         }
@@ -35,7 +37,9 @@ class SwaggerController extends Controller
 
     public function yaml(): Response
     {
-        $path = config('auto-swagger.output.yaml');
+        $directory = config('auto-swagger.directory');
+        $fileName = config('auto-swagger.output.yaml');
+        $path = $directory . '/' . $fileName;
         if (!File::exists($path)) {
             abort(404, 'Swagger documentation not generated. Run php artisan swagger:generate');
         }
