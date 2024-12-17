@@ -1,146 +1,171 @@
-# Auto swagger for Laravel
+# Laravel swagger generator
 
-This package will help you build your Swagger/OpenApi 1.0 Fast and simple
 
-![swagger.png](swagger.png)
-
-## Installation
-
+```php
+ /**
+     * @param int $id
+     * @return BitrixResponse
+     */
+    #[ApiSwagger(summary: 'Get address by coordinates', tag: 'Bitrix')]
+    #[ApiSwaggerRequest(request: ApiRequest::class, description: 'Get address by coordinates')]
+    #[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
+    #[ApiSwaggerResponse(status: 500, description: 'Error on business request')]
+    #[ApiSwaggerResponse(status: 422, description: 'Error on validation request')]
+    public function getHumanAddressFormat(
+        TestRequest $request
+    ): BitrixResponse
+    {
+        $model = Model::query()->first();
+        
+        return new BitrixResponse($model);
+    }
 ```
+
+### ApiSwaggerResponse response property can be
+
+#### Model
+```php
+    #[ApiSwaggerResponse(status: 200, resource: User::class, description: 'User details')]
+```
+
+
+#### Resource
+```php
+    #[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
+```
+
+
+#### Array
+```php
+    #[ApiSwaggerResponse(status: 200, resource: [
+        'id' => 'integer',
+        'name' => 'string',
+        "email" => "string",
+    ], description: 'User details')]
+```
+
+
+```php
+use AutoSwagger\Attributes\ApiSwaggerResource;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+#[ApiSwaggerResource(name: 'User', properties: [
+    'id' => 'integer',
+    'name' => 'string',
+])]
+class ApiResource extends JsonResource
+{
+    public function toArray($request): array
+    {
+        return [
+            'name' => 'name',
+            'id' => 123
+        ];
+    }
+}
+```
+
+```markdown
 composer require auto-swagger/php-swagger-generator
 ```
-
-- Publish config files
-
-```
+```markdown
 php artisan vendor:publish --tag=auto-swagger-config
 ```
 
-- Publish views (optional)
-
-```
+```markdown
 php artisan vendor:publish --tag=auto-swagger-views
 ```
 
-- Publish assets (optional)
-
-```
+```markdown
 php artisan vendor:publish --tag=auto-swagger-assets
 ```
 
-<procedure title="Generate swagger" id="inject-a-procedure">
-    <step>
-        <p>Run command <code>php artisan swagger:generate</code> for generate openapi.json file</p>
-    </step>
 
-</procedure>
 
-## Option for command
-
-Command is support to format json and yaml.
-
-<tabs>
-    <tab title="Yaml">
-        <code-block lang="plain text">php artisan swagger:generate --format=yaml</code-block>
-    </tab>
-    <tab title="Json">
-               <code-block lang="plain text">php artisan swagger:generate --format=json</code-block>
-    </tab>
-</tabs>
-
-If run command without any parameters will be generated Json
-and you can access in by route [ http:localhost:8000/api/documentation/json ]
-
-## Attributes for generate openapi
-
-```php
-#[ApiSwagger(summary: 'Store user', tag: 'User')]
-```
-
-ApiSwagger attribute is required for route which is you want to add to documentation
-
-<procedure title="Properties" id="inject-a-procedure_1">
-    <step>
-        <p><code>summary</code> Description for route</p>
-        <p><code>tag</code> Tag for group your routes</p>
-    </step>
-
-</procedure>
-
-```php
-#[ApiSwaggerRequest(request: UserCreateRequest::class, description: 'Store user')]
-```
-
-Attribute for request parameters
-
-```php
-  #[ApiSwaggerResponse(status: 200, resource: [
-        'id' => 'integer',
-        'name' => 'string',
-        "email" => "string",
-    ])]
-```
-
-Attribute for response parameters. Resource can be
-
-<tabs>
-    <tab title="Array">
-        <code-block lang="plain text">
-  #[ApiSwaggerResponse(status: 200, resource: [
-        'id' => 'integer',
-        'name' => 'string',
-        "email" => "string",
-    ])]
-</code-block>
-    </tab>
-    <tab title="Resource class">
-               <code-block lang="plain text">    
-#[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
-</code-block>
-    </tab>
-    <tab title="Model class">
-               <code-block lang="plain text">    
-#[ApiSwaggerResponse(status: 200, resource: Model::class, description: 'User details')]
-</code-block>
-    </tab>
-</tabs>
-
-## Pagination
-
-for Pagination you need extends from PaginatedResource and implement initCollection method
-
+## Config file auto-swagger.php
 ```php
 <?php
-declare(strict_types=1);
 
-namespace App\Http\Resources\User;
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Swagger Documentation Settings
+    |--------------------------------------------------------------------------
+    */
+    'title' => env('APP_NAME', 'Laravel') . ' API',
+    'version' => '1.0.0',
+    'description' => 'API Documentation',
 
-use AutoSwagger\Resources\PaginatedResource;
+    /*
+    |--------------------------------------------------------------------------
+    | Route Settings
+    |--------------------------------------------------------------------------
+    */
+    'route' => [
+        'prefix' => 'api/documentation',
+        'middleware' => ['web'],
+    ],
 
-class UserPaginatedResource extends PaginatedResource
-{
-    public function initCollection()
-    {
-        return $this->collection->map(function ($user) {
-            return new UserResource($user);
-        });
-    }
-}
+    /*
+    |--------------------------------------------------------------------------
+    | Controllers Paths
+    |--------------------------------------------------------------------------
+    | Add the paths to your controller directories that should be scanned
+    | for API documentation
+    */
+    'controllers' => [
+        app_path('Http/Controllers'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Output Settings
+    |--------------------------------------------------------------------------
+    */
+    'output' => [
+        'json' => public_path('swagger/openapi.json'),
+        'yaml' => public_path('swagger/openapi.yaml'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | UI Settings
+    |--------------------------------------------------------------------------
+    */
+    'ui' => [
+        'enabled' => true,
+        'theme' => 'dark', // light or dark
+    ],
+
+    'auth' => [
+        'bearer' => [
+            'enabled' => true
+        ],
+        'oauth2' => [
+            'enabled' => false
+        ],
+        'apiKey' => [
+            'enabled' => true
+        ],
+    ]
+];
 
 ```
-and on ```ApiSwaggerResponse``` attribute make isPagination true
 
-```php
-    #[ApiSwagger(summary: 'Get all users', tag: 'User')]
-    #[ApiSwaggerResponse(status: 200, resource: UserResource::class, isPagination: true)]
-    public function index(Request $request): UserPaginatedResource
-    {
-        $users = $this->userRepository->paginate($request->input('perPage', 10));
+### generate api docs
 
-        return new UserPaginatedResource($users);
-    }
+```markdown
+php artisan swagger:generate
 ```
 
-## Feedback and support
+### generate api docs on yaml
+```markdown
+php artisan swagger:generate --format=yaml
+```
 
-You can also always email me at [letenantdoniyor@gmail.com](mailto:letenantdoniyor@gmail.com).
+### Link for documentation
+
+```markdown
+http://domain/api/documentation
+```
+
