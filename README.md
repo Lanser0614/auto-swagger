@@ -1,49 +1,142 @@
-# Laravel swagger generator
+# Laravel Auto Swagger Documentation
 
+Auto Swagger for Laravel is a package that helps you generate Swagger/OpenAPI 1.0 documentation quickly and easily for your Laravel applications.
 
-```php
- /**
-     * @param int $id
-     * @return BitrixResponse
-     */
-    #[ApiSwagger(summary: 'Get address by coordinates', tag: 'Bitrix')]
-    #[ApiSwaggerRequest(request: ApiRequest::class, description: 'Get address by coordinates')]
-    #[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
-    #[ApiSwaggerResponse(status: 500, description: 'Error on business request')]
-    #[ApiSwaggerResponse(status: 422, description: 'Error on validation request')]
-    public function getHumanAddressFormat(
-        TestRequest $request
-    ): BitrixResponse
-    {
-        $model = Model::query()->first();
-        
-        return new BitrixResponse($model);
-    }
+## Installation
+
+1. Install the package via Composer:
+```bash
+composer require auto-swagger/php-swagger-generator
 ```
 
-### ApiSwaggerResponse response property can be
+2. Publish the necessary files:
+```bash
+# Configuration files
+php artisan vendor:publish --tag=auto-swagger-config
 
-#### Model
-```php
-    #[ApiSwaggerResponse(status: 200, resource: User::class, description: 'User details')]
+# Views (optional)
+php artisan vendor:publish --tag=auto-swagger-views
+
+# Assets (optional)
+php artisan vendor:publish --tag=auto-swagger-assets
 ```
 
+## Generating Documentation
 
-#### Resource
-```php
-    #[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
+To generate the OpenAPI documentation, run:
+```bash
+php artisan swagger:generate
 ```
 
+### Output Format Options
 
-#### Array
-```php
-    #[ApiSwaggerResponse(status: 200, resource: [
-        'id' => 'integer',
-        'name' => 'string',
-        "email" => "string",
-    ], description: 'User details')]
+The generator supports both JSON and YAML formats:
+
+- Generate JSON (default):
+```bash
+php artisan swagger:generate --format=json
 ```
 
+- Generate YAML:
+```bash
+php artisan swagger:generate --format=yaml
+```
+
+When using the default JSON format, the documentation will be accessible at: `http://localhost:8000/api/documentation/json`
+
+## Attributes
+
+### Route Documentation
+
+To include a route in the API documentation, use the `ApiSwagger` attribute:
+
+```php
+#[ApiSwagger(summary: 'Store user', tag: 'User')]
+```
+
+Properties:
+- `summary`: Description of the route
+- `tag`: Group identifier for related routes
+
+### Request Documentation
+
+Document request parameters using `ApiSwaggerRequest`:
+
+```php
+#[ApiSwaggerRequest(request: UserCreateRequest::class, description: 'Store user')]
+```
+
+### Query Parameters
+
+Use `ApiSwaggerQuery` to define filter parameters for your API endpoints:
+
+```php
+#[ApiSwaggerQuery([
+name: "name", 
+description: "Search by user name",
+required: false
+])]
+```
+
+The format for each query parameter is:
+`'parameter_name' => 'type|required/optional|description'`
+
+Supported types:
+- string
+- integer
+- boolean
+- date
+- array
+- float
+
+Example of a complete endpoint with query parameters:
+
+```php
+#[ApiSwagger(summary: 'List users', tag: 'User')]
+#[ApiSwaggerQuery([
+name: "search", 
+description: "Search by name or email",
+required: false
+])]
+#[ApiSwaggerQuery([
+name: "status", 
+description: "Filter by user status",
+required: false
+])]
+#[ApiSwaggerResponse(status: 200, resource: UserResource::class, isPagination: true)]
+public function index(Request $request): UserPaginatedResource
+{
+    $users = $this->userRepository
+        ->filter($request->all())
+        ->paginate($request->input('perPage', 10));
+    
+    return new UserPaginatedResource($users);
+}
+```
+
+### Response Documentation
+
+Document API responses using `ApiSwaggerResponse`. You can specify the response structure in three ways:
+
+1. Using an array:
+```php
+#[ApiSwaggerResponse(status: 200, resource: [
+    'id' => 'integer',
+    'name' => 'string',
+    'email' => 'string',
+])]
+```
+
+2. Using an API Resource class:
+```php
+#[ApiSwaggerResponse(status: 200, resource: ApiResource::class, description: 'User details')]
+```
+
+3. Using a Model class:
+```php
+#[ApiSwaggerResponse(status: 200, resource: Model::class, description: 'User details')]
+```
+## Resource class
 
 ```php
 use AutoSwagger\Attributes\ApiSwaggerResource;
@@ -58,114 +151,51 @@ class ApiResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'name' => 'name',
-            'id' => 123
+            'name' => $this->name,
+            'id' => $this->id
         ];
     }
 }
 ```
 
-```markdown
-composer require auto-swagger/php-swagger-generator
-```
-```markdown
-php artisan vendor:publish --tag=auto-swagger-config
-```
 
-```markdown
-php artisan vendor:publish --tag=auto-swagger-views
-```
+## Pagination Support
 
-```markdown
-php artisan vendor:publish --tag=auto-swagger-assets
-```
+To implement pagination in your API documentation:
 
+1. Create a paginated resource class that extends `PaginatedResource`:
 
-
-## Config file auto-swagger.php
 ```php
 <?php
+declare(strict_types=1);
 
-return [
-    /*
-    |--------------------------------------------------------------------------
-    | Swagger Documentation Settings
-    |--------------------------------------------------------------------------
-    */
-    'title' => env('APP_NAME', 'Laravel') . ' API',
-    'version' => '1.0.0',
-    'description' => 'API Documentation',
+namespace App\Http\Resources\User;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Route Settings
-    |--------------------------------------------------------------------------
-    */
-    'route' => [
-        'prefix' => 'api/documentation',
-        'middleware' => ['web'],
-    ],
+use AutoSwagger\Resources\PaginatedResource;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Controllers Paths
-    |--------------------------------------------------------------------------
-    | Add the paths to your controller directories that should be scanned
-    | for API documentation
-    */
-    'controllers' => [
-        app_path('Http/Controllers'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Output Settings
-    |--------------------------------------------------------------------------
-    */
-    'output' => [
-        'json' => public_path('swagger/openapi.json'),
-        'yaml' => public_path('swagger/openapi.yaml'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | UI Settings
-    |--------------------------------------------------------------------------
-    */
-    'ui' => [
-        'enabled' => true,
-        'theme' => 'dark', // light or dark
-    ],
-
-    'auth' => [
-        'bearer' => [
-            'enabled' => true
-        ],
-        'oauth2' => [
-            'enabled' => false
-        ],
-        'apiKey' => [
-            'enabled' => true
-        ],
-    ]
-];
-
+class UserPaginatedResource extends PaginatedResource
+{
+    public function initCollection()
+    {
+        return $this->collection->map(function ($user) {
+            return new UserResource($user);
+        });
+    }
+}
 ```
 
-### generate api docs
+2. Set `isPagination` to true in your `ApiSwaggerResponse` attribute:
 
-```markdown
-php artisan swagger:generate
+```php
+#[ApiSwagger(summary: 'Get all users', tag: 'User')]
+#[ApiSwaggerResponse(status: 200, resource: UserResource::class, isPagination: true)]
+public function index(Request $request): UserPaginatedResource
+{
+    $users = $this->userRepository->paginate($request->input('perPage', 10));
+    return new UserPaginatedResource($users);
+}
 ```
 
-### generate api docs on yaml
-```markdown
-php artisan swagger:generate --format=yaml
-```
+## Support
 
-### Link for documentation
-
-```markdown
-http://domain/api/documentation
-```
-
+For support, feedback, or questions, contact the maintainer at: letenantdoniyor@gmail.com
