@@ -4,6 +4,7 @@ namespace AutoSwagger\Analyzer;
 
 use AutoSwagger\Attributes\ApiSwagger;
 use AutoSwagger\Attributes\ApiProperty;
+use AutoSwagger\Attributes\ApiSwaggerQuery;
 use AutoSwagger\Attributes\ApiSwaggerResponse;
 use AutoSwagger\Attributes\ApiSwaggerResource;
 use AutoSwagger\Attributes\ApiResponseException;
@@ -238,35 +239,18 @@ class RouteAnalyzer
         $parameters = [];
 
         // Get path parameters
-        foreach ($route->parameterNames() as $name) {
+        foreach ($method->getAttributes(ApiSwaggerQuery::class) as $query) {
             $parameters[] = [
-                'name' => $name,
-                'in' => 'path',
-                'required' => !str_contains($route->uri(), "{{$name}?}"),
+                'name' => $query->getArguments()['name'],
+                'in' => 'query',
+                'required' => $query->getArguments()['required'],
                 'schema' => [
                     'type' => 'string'
                 ],
-                'description' => "The {$name} parameter"
+                'description' => $query->getArguments()['description']
             ];
         }
 
-        // Get query parameters from method parameters
-        foreach ($method->getParameters() as $param) {
-            if (!$this->shouldIncludeParameter($param, $route)) {
-                continue;
-            }
-
-
-            $parameters[] = [
-                'name' => $param->getName(),
-                'in' => 'query',
-                'required' => !$param->isOptional(),
-                'schema' => [
-                    'type' => $this->getParameterType($param)
-                ],
-                'description' => $this->getParameterDescription($param)
-            ];
-        }
 
         return $parameters;
     }
@@ -285,6 +269,7 @@ class RouteAnalyzer
             $typeName = $type->getName();
             if (is_a($typeName, 'Illuminate\Http\Request', true) ||
                 is_a($typeName, 'Illuminate\Foundation\Http\FormRequest', true)) {
+
                 return false;
             }
         }
