@@ -4,6 +4,7 @@ namespace AutoSwagger\Generator;
 
 use AutoSwagger\Analyzer\RouteAnalyzer;
 use AutoSwagger\Analyzer\SchemaGenerator;
+use AutoSwagger\Laravel\DTO\SwaggerConfigDTO;
 use Illuminate\Support\Str;
 
 class OpenApiGenerator
@@ -100,11 +101,15 @@ class OpenApiGenerator
             if (isset($route['deprecated']) && $route['deprecated']) {
                 $operation['deprecated'] = true;
             }
-
+            $config = SwaggerConfigDTO::fromArray($this->config);
+            if ($config->securityBearer) {
+                $operation['security'] = [[
+                    "bearerAuth" => []
+                ]];
+            }
             $paths[$path][$method] = $operation;
         }
 
-//        ksort($paths);
         return $paths;
     }
 
