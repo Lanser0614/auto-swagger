@@ -18,8 +18,7 @@
         "doctrine/annotations": "^2.0",
         "nikic/php-parser": "^5.3",
         "php": "^8.2",
-        "symfony/yaml": "^7.1",
-        "ibex/crud-generator": "^2.1"
+        "symfony/yaml": "^7.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5"

@@ -139,7 +139,8 @@ Document API responses using `ApiSwaggerResponse`. You can specify the response 
 ## Resource class
 
 ```php
-use AutoSwagger\Attributes\ApiSwaggerResource;use Illuminate\Http\Resources\Json\JsonResource;
+use AutoSwagger\Attributes\ApiSwaggerResource;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 #[ApiSwaggerResource(name: 'User', properties: [
     'id' => 'integer',
@@ -170,7 +171,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\User;
 
-use AutoSwagger\Resources\PaginatedResource;
+use AutoSwagger\Laravel\Resources\PaginatedResource;
 
 class UserPaginatedResource extends PaginatedResource
 {

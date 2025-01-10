@@ -3,15 +3,17 @@
 namespace AutoSwagger\Analyzer;
 
 use AutoSwagger\Attributes\ApiSwagger;
+use AutoSwagger\Attributes\ApiProperty;
 use AutoSwagger\Attributes\ApiSwaggerQuery;
-use AutoSwagger\Attributes\ApiSwaggerResource;
 use AutoSwagger\Attributes\ApiSwaggerResponse;
+use AutoSwagger\Attributes\ApiSwaggerResource;
+use AutoSwagger\Attributes\ApiResponseException;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Routing\Route as LaravelRoute;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
 use ReflectionMethod;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Routing\Route as LaravelRoute;
 
 class RouteAnalyzer
 {
@@ -468,9 +470,23 @@ class RouteAnalyzer
 
         // Add properties from ApiSwaggerResource attribute
         foreach ($properties as $name => $property) {
-            $schema['properties'][$name] = is_array($property) ? $property : ['type' => $this->determinePropertyType($property)];
+            $schema['properties'][$name] = is_array($property) ? $this->getFromArray($property) : ['type' => $this->determinePropertyType($property)];
         }
 
+        return $schema;
+    }
+
+    private function getFromArray(array $array): array
+    {
+        $schema = [
+            'type' => 'object',
+            'properties' => []
+        ];
+        foreach ($array as $name => $property) {
+            $schema['properties'][$name] = is_array($property) ? $this->getFromArray($property) : [
+                'type' => $this->determinePropertyType($property)
+            ];
+        }
         return $schema;
     }
 

@@ -12,9 +12,6 @@ class AutoSwaggerServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__ . '/config/auto-swagger.php', 'auto-swagger'
         );
-        $this->mergeConfigFrom(
-            __DIR__ . '/config/crud.php', 'crud'
-        );
     }
 
     public function boot(): void
@@ -34,11 +31,6 @@ class AutoSwaggerServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/config/auto-swagger.php' => config_path('auto-swagger.php'),
         ], 'auto-swagger-config');
-
-        // Publish configuration
-        $this->publishes([
-            __DIR__ . '/config/crud.php' => config_path('crud.php'),
-        ], 'crud-config');
 
         // Publish views
         $this->publishes([
