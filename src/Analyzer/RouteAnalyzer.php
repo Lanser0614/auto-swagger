@@ -3,17 +3,15 @@
 namespace AutoSwagger\Analyzer;
 
 use AutoSwagger\Attributes\ApiSwagger;
-use AutoSwagger\Attributes\ApiProperty;
 use AutoSwagger\Attributes\ApiSwaggerQuery;
-use AutoSwagger\Attributes\ApiSwaggerResponse;
 use AutoSwagger\Attributes\ApiSwaggerResource;
-use AutoSwagger\Attributes\ApiResponseException;
+use AutoSwagger\Attributes\ApiSwaggerResponse;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Routing\Route as LaravelRoute;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
 use ReflectionMethod;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Routing\Route as LaravelRoute;
 
 class RouteAnalyzer
 {

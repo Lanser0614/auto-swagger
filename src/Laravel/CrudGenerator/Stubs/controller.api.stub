@@ -1,0 +1,72 @@
+<?php
+
+namespace {{controllerNamespace}};
+
+use Illuminate\Http\Request;
+use {{modelNamespace}}\{{modelName}};
+use {{requestNamespace}}\{{modelName}}Request;
+use App\Http\Controllers\Controller;
+use Src\packages\CrudGenerator\Trait\ApiResponseTrait;
+use Illuminate\Http\JsonResponse;
+
+class {{modelName}}ApiController extends Controller
+{
+    use ApiResponseTrait;
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(): JsonResponse
+    {
+        ${{modelNamePluralLowerCase}} = {{modelName}}::query()->paginate();
+        return $this->paginatedSuccess(${{modelNamePluralLowerCase}});
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store({{modelName}}Request $request): JsonResponse
+    {
+         ${{modelNameLowerCase}} = {{modelName}}::query()->create($request->validated());
+         return $this->responseSuccess(${{modelNameLowerCase}});
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id): JsonResponse
+    {
+        return $this->responseSuccess({{modelName}}::query()->find($id));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update({{modelName}}Request $request, {{modelName}} ${{modelNameLowerCase}})
+    {
+       ${{modelNameLowerCase}} = ${{modelNameLowerCase}}->update($request->validated());
+       return $this->responseSuccess(${{modelNameLowerCase}});
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        {{modelName}}::query()->find($id)->delete();
+    }
+}

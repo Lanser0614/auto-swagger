@@ -139,8 +139,7 @@ Document API responses using `ApiSwaggerResponse`. You can specify the response 
 ## Resource class
 
 ```php
-use AutoSwagger\Attributes\ApiSwaggerResource;
-use Illuminate\Http\Resources\Json\JsonResource;
+use AutoSwagger\Attributes\ApiSwaggerResource;use Illuminate\Http\Resources\Json\JsonResource;
 
 #[ApiSwaggerResource(name: 'User', properties: [
     'id' => 'integer',

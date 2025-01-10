@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources;
 
-use AutoSwagger\Attributes\ApiResource;
 use AutoSwagger\Attributes\ApiProperty;
+use AutoSwagger\Attributes\ApiResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 #[ApiResource(
