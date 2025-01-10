@@ -468,23 +468,9 @@ class RouteAnalyzer
 
         // Add properties from ApiSwaggerResource attribute
         foreach ($properties as $name => $property) {
-            $schema['properties'][$name] = is_array($property) ? $this->getFromArray($property) : ['type' => $this->determinePropertyType($property)];
+            $schema['properties'][$name] = is_array($property) ? $property : ['type' => $this->determinePropertyType($property)];
         }
 
-        return $schema;
-    }
-
-    private function getFromArray(array $array): array
-    {
-        $schema = [
-            'type' => 'object',
-            'properties' => []
-        ];
-        foreach ($array as $name => $property) {
-            $schema['properties'][$name] = is_array($property) ? $this->getFromArray($property) : [
-                'type' => $this->determinePropertyType($property)
-            ];
-        }
         return $schema;
     }
 
