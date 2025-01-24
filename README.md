@@ -62,8 +62,13 @@ Properties:
 
 Document request parameters using `ApiSwaggerRequest`:
 
+On the controller method you need use Request class for validation, if you does not do this AutoSwager will not parse RequestBody
 ```php
 #[ApiSwaggerRequest(request: UserCreateRequest::class, description: 'Store user')]
+public function store(UserCreateRequest $request): UserPaginatedResource
+{
+    // some Logic
+}
 ```
 
 ### Query Parameters
