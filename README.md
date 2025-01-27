@@ -82,6 +82,10 @@ description: "Search by user name",
 required: false
 ])]
 ```
+if you need paste id Of model you need make isId parameter true
+```php
+#[ApiSwaggerQuery(name: "id", required: true, isId: true)]
+```
 
 The format for each query parameter is:
 `'parameter_name' => 'type|required/optional|description'`

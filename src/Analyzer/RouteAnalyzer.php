@@ -239,16 +239,33 @@ class RouteAnalyzer
         $parameters = [];
 
         // Get path parameters
+        /**
+         * Full docblock with a summary.
+         *
+         * @var \ReflectionAttribute $query
+         */
         foreach ($method->getAttributes(ApiSwaggerQuery::class) as $query) {
-            $parameters[] = [
-                'name' => $query->getArguments()['name'],
-                'in' => 'query',
-                'required' => $query->getArguments()['required'],
-                'schema' => [
-                    'type' => 'string'
-                ],
-                'description' => $query->getArguments()['description']
-            ];
+            if ($query->getArguments()['isId']) {
+                $parameters[] = [
+                    'name' => $query->getArguments()['name'],
+                    "in" => "path",
+                    "required" => $query->getArguments()['required'],
+                    "description" =>  $query->getArguments()['description'] ?? '',
+                    "schema" => [
+                        "type" => "string"
+                    ]
+                ];
+            } else {
+                $parameters[] = [
+                    'name' => $query->getArguments()['name'],
+                    'in' => 'query',
+                    'required' => $query->getArguments()['required'],
+                    'schema' => [
+                        'type' => 'string'
+                    ],
+                    'description' =>  $query->getArguments()['description'] ?? '',
+                ];
+            }
         }
 
 
