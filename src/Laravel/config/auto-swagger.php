@@ -63,5 +63,7 @@ return [
         'apiKey' => [
             'enabled' => true
         ],
-    ]
+    ],
+
+    'generate_always' => env('SWAGGER_GENERATE_ALWAYS', false)
 ];

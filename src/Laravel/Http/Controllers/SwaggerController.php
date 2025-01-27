@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 
 class SwaggerController extends Controller
 {
@@ -13,6 +14,11 @@ class SwaggerController extends Controller
     {
         if (!config('auto-swagger.ui.enabled', true)) {
             abort(404);
+        }
+
+        if(config('auto-swagger.generate_always', false))
+        {
+            Artisan::call('swagger:generate');
         }
 
         return response()->view('auto-swagger::swagger', [
