@@ -84,7 +84,7 @@ class RouteAnalyzer
                 'method' => strtolower($route->methods()[0]),
                 'summary' => $this->generateSummary($methodReflection, $route),
                 'description' => $this->getRouteDescription($methodReflection, $route),
-                'operationId' => $method,
+                'operationId' => $controller . '|' . $method,
                 'parameters' => $this->getRouteParameters($route, $methodReflection),
                 'responses' => $this->getResponseInfo($methodReflection),
                 'middleware' => $route->middleware()
