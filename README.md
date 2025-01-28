@@ -205,6 +205,11 @@ public function index(Request $request): UserPaginatedResource
 }
 ```
 
+### For each reload on api/documentation route regenerate docs set environment:
+```bash
+SWAGGER_GENERATE_ALWAYS=true
+```
+
 ## Support
 
 For support, feedback, or questions, contact the maintainer at: letenantdoniyor@gmail.com
