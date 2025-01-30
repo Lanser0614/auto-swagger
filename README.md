@@ -44,6 +44,8 @@ php artisan swagger:generate --format=yaml
 
 When using the default JSON format, the documentation will be accessible at: `http://localhost:8000/api/documentation/json`
 
+# All attributes must be writen in controller
+
 ## Attributes
 
 ### Route Documentation
