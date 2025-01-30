@@ -8,6 +8,7 @@ use AutoSwagger\Attributes\ApiSwaggerQuery;
 use AutoSwagger\Attributes\ApiSwaggerResponse;
 use AutoSwagger\Attributes\ApiSwaggerResource;
 use AutoSwagger\Attributes\ApiResponseException;
+use http\Exception\RuntimeException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
@@ -38,7 +39,7 @@ class RouteAnalyzer
                     $routes[] = $routeInfo;
                 }
             } catch (\Throwable $e) {
-                continue;
+                throw new RuntimeException('Error: ' . $e->getMessage() . ' ' . 'url: ' . $route->uri());
             }
         }
 
@@ -57,10 +58,14 @@ class RouteAnalyzer
             return null;
         }
 
+        if (!str_contains($action['controller'], '@')) {
+            return null;
+        }
+
         // Get controller and method
         [$controller, $method] = explode('@', $action['controller']);
 
-        try {
+
             $reflection = new ReflectionClass($controller);
             $methodReflection = $reflection->getMethod($method);
 
@@ -97,9 +102,6 @@ class RouteAnalyzer
             }
 
             return $routeInfo;
-        } catch (\ReflectionException $e) {
-            return null;
-        }
     }
 
     private function getRouteTags(ReflectionMethod $methodReflection, LaravelRoute $route): array
