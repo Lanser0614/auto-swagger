@@ -10,6 +10,7 @@ use AutoSwagger\Attributes\ApiSwaggerResource;
 use AutoSwagger\Attributes\ApiResponseException;
 use http\Exception\RuntimeException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
 use ReflectionMethod;
@@ -39,7 +40,7 @@ class RouteAnalyzer
                     $routes[] = $routeInfo;
                 }
             } catch (\Throwable $e) {
-                throw new RuntimeException('Error: ' . $e->getMessage() . ' ' . 'url: ' . $route->uri());
+                Log::error('Swagger-Error: ' . $e->getMessage() . ' ' . 'url: ' . $route->uri());
             }
         }
 
