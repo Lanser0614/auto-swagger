@@ -20,6 +20,7 @@ class GenerateSwaggerCommand extends Command
                           {--bearer : Enable Bearer token authentication}
                           {--oauth2 : Enable OAuth2 authentication}
                           {--api-key : Enable API key authentication}
+                          {--view-docs : view wswagger.json to console}
                           {--config= : Path to configuration file}';
 
     protected $description = 'Generate OpenAPI documentation from your Laravel application';
@@ -116,7 +117,9 @@ class GenerateSwaggerCommand extends Command
 
     private function handleOutput(string $output): void
     {
-        $this->line($output);
+        if ($this->option('view-docs')) {
+            $this->line($output);
+        }
 
         $format = strtolower($this->option('format') ?? 'json');
 
