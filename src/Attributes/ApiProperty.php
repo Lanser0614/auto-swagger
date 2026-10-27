@@ -15,7 +15,7 @@ class ApiProperty
         public readonly bool $nullable = false,
         public readonly ?string $ref = null,
         public readonly bool $isCollection = false,
-        public readonly ?array $items = null
-    ) {
-    }
+        public readonly ?array $items = null,
+        public readonly ?string $name = null,
+    ) {}
 }

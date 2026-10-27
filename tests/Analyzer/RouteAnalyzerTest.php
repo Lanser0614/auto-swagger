@@ -2,66 +2,85 @@
 
 namespace Tests\Analyzer;
 
-use PHPUnit\Framework\TestCase;
+use AutoSwagger\Analyzer\OpenApiGenerator;
 use AutoSwagger\Analyzer\RouteAnalyzer;
-use App\Http\Controllers\ItemController;
+use Illuminate\Support\Facades\Route;
+use Tests\Fixtures\ExampleController;
+use Tests\TestCase;
 
 class RouteAnalyzerTest extends TestCase
 {
-    private RouteAnalyzer $analyzer;
-
-    protected function setUp(): void
+    public function test_metadata_parameters_and_response_schemas(): void
     {
-        parent::setUp();
-        $this->analyzer = new RouteAnalyzer();
+        $spec = (new OpenApiGenerator)->generate();
+        $operation = $spec['paths']['/api/items/{id}']['get'];
+        $this->assertSame('Find item', $operation['summary']);
+        $this->assertSame('Item details', $operation['description']);
+        $this->assertSame('showItem', $operation['operationId']);
+        $this->assertTrue($operation['deprecated']);
+        $this->assertSame(['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']], $operation['parameters'][0]);
+        $schema = $operation['responses'][200]['content']['application/json']['schema'];
+        $this->assertSame('number', $schema['properties']['price']['type']);
+        $this->assertSame('boolean', $schema['properties']['details']['properties']['active']['type']);
+        $this->assertSame('Display name', $schema['properties']['name']['description']);
+        $this->assertSame(['name'], $schema['required']);
+        $this->assertSame(['description' => 'Not found'], $operation['responses'][404]);
+        $this->assertArrayNotHasKey('/api/ignored', $spec['paths']);
     }
 
-    public function testAnalyzeItemController()
+    public function test_request_rules_and_upload_media_type_are_inferred(): void
     {
-        $routes = $this->analyzer->analyzeController(ItemController::class);
+        $operation = (new OpenApiGenerator)->generate()['paths']['/api/items']['post'];
+        $body = $operation['requestBody'];
+        $this->assertSame('Create data', $body['description']);
+        $schema = $body['content']['multipart/form-data']['schema'];
+        $this->assertSame(['type' => 'number', 'minimum' => 0.5], $schema['properties']['price']);
+        $this->assertSame('integer', $schema['properties']['tags']['items']['type']);
+        $this->assertSame(['id'], $schema['properties']['items']['items']['required']);
+        $this->assertSame('binary', $schema['properties']['image']['format']);
+        $this->assertArrayHasKey(422, $operation['responses']);
+    }
 
-        $this->assertNotEmpty($routes);
-        $this->assertCount(1, $routes); // One route for show method
+    public function test_security_matches_middleware_instead_of_securing_public_routes(): void
+    {
+        $spec = (new OpenApiGenerator(['security' => ['apiKey' => ['enabled' => true]]]))->generate();
+        $this->assertArrayNotHasKey('security', $spec['paths']['/api/items/{id}']['get']);
+        $this->assertSame([['bearerAuth' => []]], $spec['paths']['/api/items']['get']['security']);
+        $this->assertSame([['apiKey' => []]], $spec['paths']['/api/key']['get']['security']);
+        $this->assertSame([['bearerAuth' => [], 'apiKey' => []]], $spec['paths']['/api/combined']['get']['security']);
+        $list = $spec['paths']['/api/items']['get'];
+        $this->assertSame('integer', $list['parameters'][0]['schema']['type']);
+        $this->assertFalse($list['parameters'][1]['required']);
+        $this->assertSame('array', $list['responses'][200]['content']['application/json']['schema']['properties']['data']['type']);
+    }
 
-        $route = $routes[0];
+    public function test_multi_method_and_invokable_routes_have_unique_operations(): void
+    {
+        $spec = (new OpenApiGenerator)->generate();
+        $path = $spec['paths']['/api/items/{id}'];
+        $this->assertArrayHasKey('put', $path);
+        $this->assertArrayHasKey('patch', $path);
+        $this->assertNotSame($path['put']['operationId'], $path['patch']['operationId']);
+        $this->assertArrayHasKey('/api/invoke', $spec['paths']);
+        $this->assertArrayNotHasKey('head', $path);
+        $this->assertSame([200 => ['description' => 'Successful operation']], $path['patch']['responses']);
+    }
 
-        // Test controller metadata
-        $this->assertArrayHasKey('tags', $route);
-        $this->assertEquals('Items', $route['tags'][0]['name']);
-        $this->assertEquals('Item management endpoints', $route['tags'][0]['description']);
+    public function test_duplicate_explicit_operation_ids_are_rejected(): void
+    {
+        Route::get('api/duplicate/{id}', [ExampleController::class, 'show']);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Duplicate operationId');
+        (new OpenApiGenerator)->generate();
+    }
 
-        // Test route metadata
-        $this->assertEquals('GET', $route['method']);
-        $this->assertEquals('/api/items/{id}', $route['path']);
-        $this->assertEquals('Get item by ID', $route['summary']);
-        $this->assertEquals('show', $route['operationId']);
-        $this->assertFalse($route['deprecated']);
-
-        // Test parameters
-        $this->assertNotEmpty($route['parameters']);
-        $param = $route['parameters'][0];
-        $this->assertEquals('id', $param['name']);
-        $this->assertEquals('path', $param['in']);
-        $this->assertTrue($param['required']);
-        $this->assertEquals('integer', $param['schema']['type']);
-
-        // Test responses
-        $this->assertArrayHasKey('responses', $route);
-        $this->assertArrayHasKey(200, $route['responses']);
-        $this->assertArrayHasKey(404, $route['responses']);
-
-        // Test 200 response
-        $ok = $route['responses'][200];
-        $this->assertEquals('Item found', $ok['description']);
-        $this->assertArrayHasKey('content', $ok);
-        $this->assertArrayHasKey('application/json', $ok['content']);
-        $this->assertEquals('#/components/schemas/Item', $ok['content']['application/json']['schema']['$ref']);
-
-        // Test 404 response
-        $notFound = $route['responses'][404];
-        $this->assertEquals('Item not found', $notFound['description']);
-        $this->assertArrayHasKey('content', $notFound);
-        $this->assertArrayHasKey('application/json', $notFound['content']);
-        $this->assertEquals('string', $notFound['content']['application/json']['schema']['properties']['message']['type']);
+    public function test_nested_array_resource_shorthand_is_preserved(): void
+    {
+        $schema = (new RouteAnalyzer)->generateResourceSchemaFromArray([
+            'settings' => ['enabled' => 'bool'],
+            'rows' => ['type' => 'array', 'items' => ['type' => 'number']],
+        ]);
+        $this->assertSame('boolean', $schema['properties']['settings']['properties']['enabled']['type']);
+        $this->assertSame(['type' => 'number'], $schema['properties']['rows']['items']);
     }
 }

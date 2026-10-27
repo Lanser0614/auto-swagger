@@ -1,69 +1,50 @@
 <?php
 
+use AutoSwagger\Analysis\Options;
+
 return [
-    /*
-    |--------------------------------------------------------------------------
-    | Swagger Documentation Settings
-    |--------------------------------------------------------------------------
-    */
-    'title' => env('APP_NAME', 'Laravel') . ' API',
+    'title' => env('APP_NAME', 'Laravel').' API',
     'version' => '1.0.0',
     'description' => 'API Documentation',
+    'contact' => [],
+    'license' => [],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Route Settings
-    |--------------------------------------------------------------------------
-    */
     'route' => [
         'prefix' => 'api/documentation',
         'middleware' => ['web'],
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Controllers Paths
-    |--------------------------------------------------------------------------
-    | Add the paths to your controller directories that should be scanned
-    | for API documentation
-    */
-    'controllers' => [
-        app_path('Http/Controllers'),
-    ],
+    // Null uses app.url. Route paths already include their API prefix.
+    'servers' => null,
 
-    /*
-    |--------------------------------------------------------------------------
-    | Output Settings
-    |--------------------------------------------------------------------------
-    */
     'output' => [
         'json' => 'openapi.json',
         'yaml' => 'openapi.yaml',
     ],
-
+    // Relative directories are resolved under public_path(). Absolute paths work too.
     'directory' => 'swagger',
 
-    /*
-    |--------------------------------------------------------------------------
-    | UI Settings
-    |--------------------------------------------------------------------------
-    */
     'ui' => [
         'enabled' => true,
-        'theme' => 'dark', // light or dark
+        'theme' => 'dark',
     ],
 
+    // Enabling a scheme makes it available in Swagger UI. Route middleware
+    // determines which operations require it.
     'auth' => [
-        'bearer' => [
-            'enabled' => true
-        ],
+        'bearer' => ['enabled' => true],
         'oauth2' => [
-            'enabled' => false
+            'enabled' => false,
+            'flows' => [
+                'password' => ['tokenUrl' => '/oauth/token', 'scopes' => []],
+            ],
+            'scopes' => [],
         ],
-        'apiKey' => [
-            'enabled' => true
-        ],
+        'apiKey' => ['enabled' => true, 'in' => 'header', 'name' => 'X-API-Key'],
     ],
 
-    'generate_always' => env('SWAGGER_GENERATE_ALWAYS', false)
+    // Defaults preserve annotated schemas and response shapes.
+    'analysis' => Options::DEFAULTS,
+
+    'generate_always' => env('SWAGGER_GENERATE_ALWAYS', false),
 ];

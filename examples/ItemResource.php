@@ -2,35 +2,20 @@
 
 namespace App\Http\Resources;
 
-use AutoSwagger\Attributes\ApiResource;
-use AutoSwagger\Attributes\ApiProperty;
+use AutoSwagger\Attributes\ApiSwaggerResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-#[ApiResource(
-    name: 'Item',
-    description: 'An item resource'
-)]
+#[ApiSwaggerResource(name: 'Item', properties: [
+    'id' => 'integer',
+    'name' => 'string',
+    'description' => 'string',
+    'price' => 'number',
+    'quantity' => 'integer',
+    'created_at' => 'date-time',
+])]
 class ItemResource extends JsonResource
 {
-    #[ApiProperty(type: 'integer', description: 'The item ID')]
-    private $id;
-
-    #[ApiProperty(type: 'string', description: 'The item name')]
-    private $name;
-
-    #[ApiProperty(type: 'string', description: 'The item description')]
-    private $description;
-
-    #[ApiProperty(type: 'number', format: 'float', description: 'The item price')]
-    private $price;
-
-    #[ApiProperty(type: 'integer', description: 'Available quantity')]
-    private $quantity;
-
-    #[ApiProperty(type: 'string', format: 'date-time', description: 'When the item was created')]
-    private $created_at;
-
-    public function toArray($request)
+    public function toArray($request): array
     {
         return [
             'id' => $this->id,
@@ -38,7 +23,7 @@ class ItemResource extends JsonResource
             'description' => $this->description,
             'price' => $this->price,
             'quantity' => $this->quantity,
-            'created_at' => $this->created_at->toISOString()
+            'created_at' => $this->created_at->toISOString(),
         ];
     }
 }

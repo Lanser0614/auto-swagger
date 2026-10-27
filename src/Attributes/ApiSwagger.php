@@ -13,6 +13,5 @@ class ApiSwagger
         public readonly ?array $parameters = null,
         public readonly ?array $responses = null,
         public readonly ?bool $deprecated = false
-    ) {
-    }
+    ) {}
 }

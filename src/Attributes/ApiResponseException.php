@@ -9,6 +9,5 @@ class ApiResponseException
         public readonly int $status = 200,
         public readonly ?string $resource = null,
         public readonly ?string $description = null,
-    ) {
-    }
+    ) {}
 }

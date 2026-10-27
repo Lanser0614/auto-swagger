@@ -16,7 +16,7 @@ class StoreItemRequest extends FormRequest
             'category_id' => ['required', 'exists:categories,id'],
             'tags' => ['array'],
             'tags.*' => ['string', 'max:50'],
-            'image' => ['nullable', 'image', 'max:2048'] // 2MB max
+            'image' => ['nullable', 'image', 'max:2048'], // 2MB max
         ];
     }
 

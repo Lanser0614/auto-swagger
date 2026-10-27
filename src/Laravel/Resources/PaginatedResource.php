@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace AutoSwagger\Laravel\Resources;
@@ -10,7 +11,7 @@ abstract class PaginatedResource extends ResourceCollection
     public function toArray($request)
     {
         $collection = $this->initCollection();
-        
+
         return [
             'data' => $collection,
             'pagination' => [
@@ -23,5 +24,5 @@ abstract class PaginatedResource extends ResourceCollection
         ];
     }
 
-    public abstract function initCollection();
+    abstract public function initCollection();
 }

@@ -8,7 +8,7 @@ class ApiSwaggerResource
     public function __construct(
         public readonly string $name,
         public readonly ?string $description = null,
-        public readonly array $properties = []
-    ) {
-    }
+        public readonly array $properties = [],
+        public readonly ?string $model = null,
+    ) {}
 }

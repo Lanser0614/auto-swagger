@@ -10,7 +10,9 @@ class ApiSwaggerResponse
         public readonly array|string $resource = [],
         public readonly ?string $description = null,
         public readonly ?string $mediaType = 'application/json',
-        public readonly ?bool $isPagination = false
-    ) {
-    }
+        public readonly ?bool $isPagination = false,
+        public readonly ?bool $isCollection = null,
+        public readonly ?string $wrapping = null,
+        public readonly ?string $pagination = null,
+    ) {}
 }

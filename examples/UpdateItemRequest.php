@@ -16,7 +16,7 @@ class UpdateItemRequest extends FormRequest
             'category_id' => ['sometimes', 'exists:categories,id'],
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['string', 'max:50'],
-            'image' => ['sometimes', 'image', 'max:2048']
+            'image' => ['sometimes', 'image', 'max:2048'],
         ];
     }
 
